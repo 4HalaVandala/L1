@@ -1,31 +1,37 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"time"
 )
 
-func main() {
-	ctx, cancel := context.WithCancel(context.Background())
+// Первый способ - передача каналу сигнала об остановке
 
-	go func(ctx context.Context) {
+func main() {
+	stopChan := make(chan struct{})
+	a := true
+
+	// Запускаем горутину
+	go func() {
 		for {
 			select {
-			case <-ctx.Done():
+			case <-stopChan:
 				fmt.Println("Stopping goroutine...")
 				return
 			default:
-
-				for i := 0; ; i++ {
-					fmt.Println(i)
-				}
+				fmt.Println("Goroutine doing smth...")
+				time.Sleep(time.Millisecond * 2500)
 			}
 		}
-	}(ctx)
+	}()
 
-	// отправляем сигнал об отмене контекста через 5 секунд
-	time.AfterFunc(time.Second*3, func() {
-		cancel()
+	// отправляем сигнал об остановке через 5 секунд
+	time.AfterFunc(time.Second*5, func() {
+		close(stopChan)
 	})
+
+	// Бесконечный цикл чтоб мейн поток не завершался пока работает горутина
+	for a {
+
+	}
 }
