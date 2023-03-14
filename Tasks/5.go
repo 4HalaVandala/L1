@@ -7,12 +7,14 @@ import (
 
 func main() {
 	dataChan := make(chan int)
-	duration := 5 // время работы программы в секундах
+	t := 2
+	duration := time.Second * time.Duration(t)
+	timer := time.NewTimer(time.Duration(duration))
 
 	go func() {
 		for i := 0; ; i++ {
 			select {
-			case <-time.After(time.Second * time.Duration(duration)):
+			case <-timer.C:
 				fmt.Println("Stopping data generation...")
 				close(dataChan)
 				return
