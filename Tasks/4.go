@@ -1,56 +1,51 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/signal"
-	"sync"
-	"syscall"
+	"time"
 )
 
-func main() {
-	// Количество воркеров
-	numWorkers := 5
-
-	// Канал для записи данных
-	dataChan := make(chan string)
-
-	// Запуск воркеров
-	wg := &sync.WaitGroup{}
-	for i := 0; i < numWorkers; i++ {
-		wg.Add(1)
-		go worker(dataChan, wg)
-	}
-
-	// Graceful shutdown
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		<-sigChan
-		fmt.Println("Received signal, shutting down...")
-		close(dataChan)
-	}()
-
-	// Запись данных в канал
-	for i := 0; ; i++ {
-		select {
-		case <-sigChan:
-			fmt.Println("Stopping data generation...")
-			return
-		default:
-			dataChan <- fmt.Sprintf("Data %d", i)
-		}
-	}
-
-	// Ожидание завершения воркеров
-	wg.Wait()
-	fmt.Println("All workers stopped")
+func generateData() int {
+	return rand.Intn(100)
 }
 
-func worker(dataChan chan string, wg *sync.WaitGroup) {
-	defer wg.Done()
+func worker(id int, dataChan chan int) {
+	for {
+		select {
+		case data := <-dataChan:
+			fmt.Printf("Worker %d: %d\n", id, data)
+		}
+	}
+}
 
-	for data := range dataChan {
-		fmt.Println(data)
+func main() {
+	dataChan := make(chan int)
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt)
+
+	_, cancel := context.WithCancel(context.Background())
+
+	numWorkers := 5
+
+	for i := 0; i < numWorkers; i++ {
+		go worker(i, dataChan)
+	}
+
+	for {
+		select {
+		case <-sigChan:
+			fmt.Println("Stopping program...")
+			cancel()
+			close(dataChan)
+			return
+		default:
+			data := generateData()
+			dataChan <- data
+			time.Sleep(time.Second)
+		}
 	}
 }
