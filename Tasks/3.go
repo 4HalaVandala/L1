@@ -6,39 +6,28 @@ import (
 )
 
 func main() {
+	numbers := []int{2, 4, 6, 8, 10}
+
 	var wg sync.WaitGroup
-	nums := []int{2, 4, 6, 8, 10}
-	results := make(chan int, len(nums))
+	resultCh := make(chan int)
 
-	// создаем пул горутин
-	pool := sync.Pool{
-		New: func() interface{} {
-			return make([]byte, 4)
-		},
-	}
-
-	for _, n := range nums {
+	for _, num := range numbers {
 		wg.Add(1)
-		go func(x int) {
+		go func(n int) {
 			defer wg.Done()
-			buf := pool.Get().([]byte)
-			defer pool.Put(buf)
-			res := x * x
-			str := fmt.Sprintf("%d\n", res)
-			copy(buf, str)
-			results <- res
-		}(n)
+			resultCh <- n * n
+		}(num)
 	}
 
 	go func() {
 		wg.Wait()
-		close(results)
+		close(resultCh)
 	}()
 
 	sum := 0
-	for res := range results {
+	for res := range resultCh {
 		sum += res
 	}
 
-	fmt.Println(sum)
+	fmt.Println("Sum: ", sum)
 }
